@@ -49,21 +49,9 @@ func StartSample() {
 	ch = make(chan int)
 	go testSQSReceiveMsg(*sess, testSQSInfo(*sess), ch)
 
-Loop:
-	for {
-		// fmt.Println("start select------------------")
-		select {
-		case msg := <-ch:
+	// 3초 대기
+	time.Sleep(time.Second * 10)
 
-			fmt.Println("received", msg)
-			if msg == 5 {
-				break Loop
-			}
-		default:
-			// fmt.Println("default")
-		}
-		// fmt.Println("end select-------------------\n\n")
-	}
 }
 
 func DescribeRegions(sess session.Session) {
@@ -149,7 +137,7 @@ func testSQSSendMsg(sess session.Session, qURL string, ch chan int) {
 			return
 		}
 
-		fmt.Println("Success", *result.MessageId)
+		fmt.Println("Success", result.String())
 	}
 
 	ch <- 1
@@ -191,7 +179,7 @@ func testSQSReceiveMsg(sess session.Session, qURL string, ch chan int) {
 
 			fmt.Println("Message Deleted", resultDelete)
 
-			fmt.Println(result.Messages)
+			fmt.Println(result.String())
 			counter++
 			ch <- counter
 		}

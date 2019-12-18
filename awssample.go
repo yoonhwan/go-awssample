@@ -2,6 +2,7 @@ package awssample
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -124,7 +125,7 @@ func testSQSSendMsg(sess session.Session, qURL string, ch chan int) {
 		// Create a SQS service client.
 		svc := sqs.New(&sess)
 		result, err := svc.SendMessage(&sqs.SendMessageInput{
-			MessageGroupId: aws.String("test"),
+			MessageGroupId: aws.String(fmt.Sprintf("test%d", i)),
 			// DelaySeconds:   aws.Int64(10),
 			MessageAttributes: map[string]*sqs.MessageAttributeValue{
 				"Title": &sqs.MessageAttributeValue{
@@ -163,10 +164,12 @@ func testSQSReceiveMsg(sess session.Session, qURL string, ch chan int) {
 		result, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
 			QueueUrl: &qURL,
 			AttributeNames: []*string{
-				aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
+				// aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
+				aws.String(sqs.MessageSystemAttributeNameMessageGroupId),
 			},
 			MessageAttributeNames: []*string{
-				aws.String(sqs.QueueAttributeNameAll),
+				// aws.String(sqs.QueueAttributeNameAll),
+				aws.String(fmt.Sprintf("test%d", rand.Intn(4)+1)),
 			},
 			MaxNumberOfMessages: aws.Int64(1),
 			VisibilityTimeout:   aws.Int64(20), // 20 seconds
@@ -180,16 +183,7 @@ func testSQSReceiveMsg(sess session.Session, qURL string, ch chan int) {
 
 			go func() {
 				for _, message := range result.Messages {
-					// resultDelete, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
-					// 	QueueUrl:      &qURL,
-					// 	ReceiptHandle: message.ReceiptHandle,
-					// })
-
-					// if err != nil {
-					// 	exitErrorf("Delete Error %q", err)
-					// }
-
-					// fmt.Println("Message Deleted", resultDelete.String())
+					// testSQSDeleteMsg(sess, qURL, svc, message)
 
 					fmt.Println(message.String())
 					ch <- 1
@@ -198,6 +192,21 @@ func testSQSReceiveMsg(sess session.Session, qURL string, ch chan int) {
 		}
 	}
 }
+
+func testSQSDeleteMsg(sess session.Session, qURL string, svc *sqs.SQS, message *sqs.Message) {
+	resultDelete, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
+		QueueUrl:      &qURL,
+		ReceiptHandle: message.ReceiptHandle,
+	})
+
+	if err != nil {
+		exitErrorf("Delete Error %q", err)
+	}
+
+	fmt.Println("Message Deleted", resultDelete.String())
+
+}
+
 func exitErrorf(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)
 	os.Exit(1)

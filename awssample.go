@@ -46,12 +46,24 @@ func StartSample() {
 
 	<-ch
 
-	ch = make(chan int)
+	ch = make(chan int, 10)
 	go testSQSReceiveMsg(*sess, testSQSInfo(*sess), ch)
 
-	// 3초 대기
-	time.Sleep(time.Second * 10)
-
+	count := 0
+OUT:
+	for {
+		time.Sleep(time.Second * 1)
+		select {
+		case data := <-ch:
+			count += data
+		default:
+			count++
+			fmt.Printf("wait.... %+v\n", count)
+			if count > 100 {
+				break OUT
+			}
+		}
+	}
 }
 
 func DescribeRegions(sess session.Session) {
@@ -159,27 +171,28 @@ func testSQSReceiveMsg(sess session.Session, qURL string, ch chan int) {
 			},
 			MaxNumberOfMessages: aws.Int64(1),
 			VisibilityTimeout:   aws.Int64(20), // 20 seconds
-			WaitTimeSeconds:     aws.Int64(0),
+			WaitTimeSeconds:     aws.Int64(5),
 		})
 		if err != nil {
 			exitErrorf("Unable to receive message from queue %q, %v.", qURL, err)
 		}
-
-		fmt.Printf("Received %d messages.\n", len(result.Messages))
 		if len(result.Messages) > 0 {
+			fmt.Printf("Received %d messages.\n", len(result.Messages))
+		}
 
-			resultDelete, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
-				QueueUrl:      &qURL,
-				ReceiptHandle: result.Messages[0].ReceiptHandle,
-			})
+		for _, message := range result.Messages {
+			// resultDelete, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
+			// 	QueueUrl:      &qURL,
+			// 	ReceiptHandle: message.ReceiptHandle,
+			// })
 
-			if err != nil {
-				exitErrorf("Delete Error %q", err)
-			}
+			// if err != nil {
+			// 	exitErrorf("Delete Error %q", err)
+			// }
 
-			fmt.Println("Message Deleted", resultDelete)
+			// fmt.Println("Message Deleted", resultDelete.String())
 
-			fmt.Println(result.String())
+			fmt.Println(message.String())
 			counter++
 			ch <- counter
 		}

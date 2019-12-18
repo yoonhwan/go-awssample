@@ -159,7 +159,6 @@ func testSQSReceiveMsg(sess session.Session, qURL string, ch chan int) {
 
 	// Create a SQS service client.
 	svc := sqs.New(&sess)
-	var counter int = 0
 	for {
 		result, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
 			QueueUrl: &qURL,
@@ -178,23 +177,24 @@ func testSQSReceiveMsg(sess session.Session, qURL string, ch chan int) {
 		}
 		if len(result.Messages) > 0 {
 			fmt.Printf("Received %d messages.\n", len(result.Messages))
-		}
 
-		for _, message := range result.Messages {
-			// resultDelete, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
-			// 	QueueUrl:      &qURL,
-			// 	ReceiptHandle: message.ReceiptHandle,
-			// })
+			go func() {
+				for _, message := range result.Messages {
+					// resultDelete, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
+					// 	QueueUrl:      &qURL,
+					// 	ReceiptHandle: message.ReceiptHandle,
+					// })
 
-			// if err != nil {
-			// 	exitErrorf("Delete Error %q", err)
-			// }
+					// if err != nil {
+					// 	exitErrorf("Delete Error %q", err)
+					// }
 
-			// fmt.Println("Message Deleted", resultDelete.String())
+					// fmt.Println("Message Deleted", resultDelete.String())
 
-			fmt.Println(message.String())
-			counter++
-			ch <- counter
+					fmt.Println(message.String())
+					ch <- 1
+				}
+			}()
 		}
 	}
 }
